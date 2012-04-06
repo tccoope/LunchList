@@ -61,7 +61,7 @@ public class MyActivity extends Activity {
     class RestaurantAdapter extends ArrayAdapter<Restaurant> {
         RestaurantAdapter(){
             super(MyActivity.this,
-                    android.R.layout.simple_list_item_1,
+                    android.R.layout.simple_list_item_2,
                     model);
             }
         }
