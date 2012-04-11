@@ -2,6 +2,7 @@ package com.example;
 
 import android.app.TabActivity;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.view.*;
 import android.widget.*;
 
@@ -16,10 +17,12 @@ public class MyActivity extends TabActivity {
     EditText notes=null;
     RadioGroup types=null;
     Restaurant current=null;
+    int progress;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        requestWindowFeature(Window.FEATURE_PROGRESS);
         setContentView(R.layout.main);
 
         name=(EditText)findViewById(R.id.name);
@@ -71,10 +74,42 @@ public class MyActivity extends TabActivity {
             Toast.makeText(this, message, Toast.LENGTH_LONG).show();
 
             return(true);
+        } else if (item.getItemId()==R.id.run){
+            setProgressBarVisibility(true);
+            progress=0;
+            new Thread(longTask).start();
+
+            return(true);
         }
+
 
         return(super.onOptionsItemSelected(item));
     }
+
+    private void doSomeLongWork(final int incr){
+        runOnUiThread(new Runnable() {
+            public void run(){
+                progress+=incr;
+                setProgress(progress);
+            }
+        });
+
+        SystemClock.sleep(250);
+    }
+
+    private Runnable longTask=new Runnable() {
+        public void run(){
+            for(int i=0;i<20;i++){
+                doSomeLongWork(500);
+            }
+
+            runOnUiThread(new Runnable() {
+                public void run(){
+                    setProgressBarVisibility(false);
+                }
+            });
+        }
+    };
 
     private View.OnClickListener onSave=new View.OnClickListener() {
         public void onClick(View v){
