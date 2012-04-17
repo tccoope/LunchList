@@ -1,58 +1,42 @@
 package com.example;
 
-import android.app.TabActivity;
+import android.app.ListActivity;
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.view.*;
 import android.widget.*;
 
-public class MyActivity extends TabActivity {
+public class MyActivity extends ListActivity {
     Cursor model=null;
     RestaurantAdapter adapter=null;
-    EditText name=null;
-    EditText address=null;
-    EditText notes=null;
-    RadioGroup types=null;
     RestaurantHelper helper=null;
+    public final static String ID_EXTRA="com.example._ID";
+    SharedPreferences prefs=null;
+    private SharedPreferences.OnSharedPreferenceChangeListener prefListener=
+            new SharedPreferences.OnSharedPreferenceChangeListener(){
+                public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key){
+                    if(key.equals("sort_order")){
+                        initList();
+                    }
+                }
+            };
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 
-        name=(EditText)findViewById(R.id.name);
-        address=(EditText)findViewById(R.id.addr);
-        notes=(EditText)findViewById(R.id.notes);
-        types=(RadioGroup)findViewById(R.id.types);
+        prefs=PreferenceManager.getDefaultSharedPreferences(this);
         helper=new RestaurantHelper(this);
-
-        Button save=(Button)findViewById(R.id.save);
-
-        save.setOnClickListener(onSave);
-
-        ListView list=(ListView)findViewById(R.id.restaurants);
-
-        model=helper.getAll();
-        startManagingCursor(model);
-        adapter=new RestaurantAdapter(model);
-        list.setAdapter(adapter);
-
-        TabHost.TabSpec spec=getTabHost().newTabSpec("tag1");
-
-        spec.setContent(R.id.restaurants);
-        spec.setIndicator("List", getResources().getDrawable(R.drawable.beer_icon));
-        getTabHost().addTab(spec);
-
-        spec=getTabHost().newTabSpec("tag2");
-        spec.setContent(R.id.details);
-        spec.setIndicator("Details", getResources().getDrawable(R.drawable.beer_icon));
-        getTabHost().addTab(spec);
-
-        getTabHost().setCurrentTab(0);
-
-        list.setOnItemClickListener(onListClick);
+        initList();
+        prefs.registerOnSharedPreferenceChangeListener(prefListener);
     }
+
+
 
     @Override
     public void onDestroy(){
@@ -61,48 +45,35 @@ public class MyActivity extends TabActivity {
         helper.close();
     }
 
-    private View.OnClickListener onSave=new View.OnClickListener() {
-        public void onClick(View v){
-            String type=null;
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu){
+        new MenuInflater(this).inflate(R.menu.option, menu);
 
-            switch (types.getCheckedRadioButtonId()){
-                case R.id.sit_down:
-                    type="sit_down";
-                    break;
-                case R.id.take_out:
-                    type="take_out";
-                    break;
-                case R.id.delivery:
-                    type="delivery";
-                    break;
-            }
+        return(super.onCreateOptionsMenu(menu));
+    }
 
-            helper.insert(name.getText().toString(), address.getText().toString(), type,
-                    notes.getText().toString());
-            model.requery();
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item){
+        if(item.getItemId()==R.id.add){
+            startActivity(new Intent(MyActivity.this, DetailForm.class));
+
+            return(true);
         }
-    };
+        else if(item.getItemId()==R.id.prefs){
+            startActivity(new Intent(MyActivity.this, EditPreferences.class));
 
-    private AdapterView.OnItemClickListener onListClick=new AdapterView.OnItemClickListener(){
-        public void onItemClick(AdapterView<?> parent, View view, int position, long id){
-            model.moveToPosition(position);
-            name.setText(helper.getName(model));
-            address.setText(helper.getAddress(model));
-            notes.setText(helper.getNotes(model));
-
-            if(helper.getType(model).equals("sit_down")){
-                types.check(R.id.sit_down);
-            }
-            else if(helper.getType(model).equals("take_out")){
-                types.check(R.id.take_out);
-            }
-            else {
-                types.check(R.id.delivery);
-            }
-
-            getTabHost().setCurrentTab(1);
+            return(true);
         }
-    };
+
+        return(super.onOptionsItemSelected(item));
+    }
+    @Override
+    public void onListItemClick(ListView list, View view, int position, long id){
+        Intent i=new Intent(MyActivity.this, DetailForm.class);
+
+        i.putExtra(ID_EXTRA, String.valueOf(id));
+        startActivity(i);
+    }
 
     class RestaurantAdapter extends CursorAdapter {
         RestaurantAdapter(Cursor c){
@@ -126,6 +97,18 @@ public class MyActivity extends TabActivity {
 
             return(row);
         }
+    }
+
+    private void initList(){
+        if(model!=null){
+            stopManagingCursor(model);
+            model.close();
+        }
+
+        model=helper.getAll(prefs.getString("sort_order", "name"));
+        stopManagingCursor(model);
+        adapter=new RestaurantAdapter(model);
+        setListAdapter(adapter);
     }
 
     static class RestaurantHolder {
